@@ -16,7 +16,7 @@ export default {
   },
   setSelectedTask: (task: ITaskItem): {type: string; task: ITaskItem} => {
     return {
-      type: TaskConstant.SET_SELECTED_TASK_ID,
+      type: TaskConstant.SET_SELECTED_TASK,
       task,
     };
   },

@@ -1,0 +1,178 @@
+import BottomSheetModal from '../bottom-sheet';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {ModalAction} from '../../screens/Home';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {Formik} from 'formik';
+import {IStatus, ITaskItem} from '../../types/common';
+import SelectDropdown from 'react-native-select-dropdown';
+import {FormikProps} from 'formik/dist/types';
+import {useSelector} from 'react-redux';
+import {IRootState} from '../../redux/reducers/RootReducer';
+
+interface TaskModalProps {
+  modalAction: ModalAction;
+  onClose: () => void;
+  onSave: (value: ITaskItem) => void;
+}
+
+const defaultValue = {
+  title: '',
+  description: '',
+  status: IStatus.TODO,
+};
+
+const TaskModal = ({
+  modalAction,
+  onClose,
+  onSave,
+}: TaskModalProps): JSX.Element => {
+  const {selectedTask} = useSelector((state: IRootState) => state.task);
+
+  const formRef = useRef<FormikProps<ITaskItem>>(null);
+  const [initialValues, setInitialValues] = useState<ITaskItem>(defaultValue);
+
+  useEffect(() => {
+    if (modalAction === ModalAction.NONE) {
+      setInitialValues(defaultValue);
+    } else if (modalAction === ModalAction.EDIT) {
+      setInitialValues(selectedTask || defaultValue);
+    }
+  }, [modalAction, selectedTask]);
+
+  const modalTitle = useMemo(() => {
+    switch (modalAction) {
+      case ModalAction.ADD:
+        return 'Add task';
+      case ModalAction.EDIT:
+        return 'Edit task';
+      default:
+        return;
+    }
+  }, [modalAction]);
+
+  return (
+    <BottomSheetModal
+      isVisible={[ModalAction.ADD, ModalAction.EDIT].includes(modalAction)}
+      onModalHide={onClose}
+      onBackdropPress={onClose}
+      showIndicatorLine={false}
+      useSafeArea
+      children={
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView scrollEnabled>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Formik<ITaskItem>
+              initialValues={initialValues}
+              onSubmit={onSave}
+              innerRef={formRef}
+              enableReinitialize>
+              {({
+                handleChange,
+                handleBlur,
+                handleSubmit,
+                values,
+                setFieldValue,
+              }) => (
+                <View>
+                  <View style={styles.formItems}>
+                    <Text style={styles.label}>Title:</Text>
+                    <TextInput
+                      onChangeText={handleChange('title')}
+                      onBlur={handleBlur('title')}
+                      value={values?.title}
+                      style={styles.inputContainer}
+                    />
+                  </View>
+                  <View style={styles.formItems}>
+                    <Text style={styles.label}>Description:</Text>
+                    <TextInput
+                      onChangeText={handleChange('description')}
+                      onBlur={handleBlur('description')}
+                      value={values?.description}
+                      style={styles.inputContainer}
+                    />
+                  </View>
+                  <View style={styles.formItems}>
+                    <Text style={styles.label}>Status:</Text>
+                    <SelectDropdown
+                      buttonStyle={styles.inputContainer}
+                      data={
+                        modalAction === ModalAction.ADD
+                          ? [IStatus.TODO]
+                          : [IStatus.TODO, IStatus.DOING, IStatus.DONE]
+                      }
+                      onSelect={selectedItem => {
+                        setFieldValue('status', selectedItem);
+                      }}
+                      defaultValue={values?.status}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.btnSubmit}
+                    onPress={() => handleSubmit()}>
+                    <Text
+                      style={{fontWeight: '700', color: 'white', fontSize: 18}}>
+                      Submit
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Formik>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      }
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    minHeight: 400,
+    paddingHorizontal: 30,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    fontSize: 20,
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  formItems: {
+    marginBottom: 10,
+  },
+  label: {
+    fontWeight: '600',
+    fontSize: 18,
+    marginBottom: 5,
+  },
+  inputContainer: {
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderRadius: 10,
+    width: '100%',
+    backgroundColor: 'white',
+    paddingHorizontal: 10,
+  },
+  btnSubmit: {
+    marginTop: 10,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,112,255,0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+export default TaskModal;

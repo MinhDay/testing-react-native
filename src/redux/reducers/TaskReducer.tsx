@@ -23,20 +23,20 @@ const TaskReducer = (
         ...state,
         listTask: [...state.listTask, action.task],
       };
-    case TaskConstant.SET_SELECTED_TASK_ID:
+    case TaskConstant.SET_SELECTED_TASK:
       return {
         ...state,
         selectedTask: action.task,
       };
     case TaskConstant.UPDATE_TASK:
+      state.listTask.splice(currentIndex, 1, action.task);
       return {
         ...state,
-        listTask: state.listTask.splice(currentIndex, 1, action.task),
       };
     case TaskConstant.DELETE_TASK:
+      state.listTask.splice(currentIndex, 1);
       return {
         ...state,
-        listTask: state.listTask.splice(currentIndex, 1),
       };
     case TaskConstant.CLEAR_STORE:
       return initialState;

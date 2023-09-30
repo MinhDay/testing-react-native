@@ -1,40 +1,76 @@
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {IRootState} from '../redux/reducers/RootReducer';
-import TaskItem from '../components/Task/TaskItem';
-import {IStatus, ITaskItem} from '../types/common';
-import React from 'react';
+import TaskItem from '../components/task/TaskItem';
+import {ITaskItem} from '../types/common';
+import React, {useState} from 'react';
 import TaskActions from '../redux/actions/TaskActions';
+import TaskModal from '../components/task/TaskModal';
+import ActionsMenu from '../components/task/ActionsMenu';
+
+export enum ModalAction {
+  ADD,
+  EDIT,
+  DELETE,
+  NONE,
+}
 
 const Home = (): JSX.Element => {
   const {listTask} = useSelector((state: IRootState) => state.task);
   const dispatch = useDispatch();
+  const [modalAction, setModalAction] = useState<ModalAction>(ModalAction.NONE);
+  const [showMenu, setShowMenu] = useState<boolean>(false);
 
-  const createNewTask = () => {
+  const createNewTask = (value: ITaskItem) => {
     dispatch(
       TaskActions.createNewTask({
-        id: '1',
-        title: 'Title',
-        description: 'Description',
-        status: IStatus.TODO,
-        startTime: new Date(),
-        endTime: new Date(),
+        id: new Date().getTime(),
+        title: value.title,
+        description: value.description,
+        status: value.status,
+        startTime: value.startTime,
+        endTime: value.endTime,
       }),
     );
+    closeModal();
   };
 
-  console.log(listTask);
+  const editTask = (value: ITaskItem) => {
+    dispatch(
+      TaskActions.updateTask({
+        id: new Date().getTime(),
+        title: value.title,
+        description: value.description,
+        status: value.status,
+        startTime: value.startTime,
+        endTime: value.endTime,
+      }),
+    );
+    closeModal();
+  };
+
+  const deleteTask = () => {
+    dispatch(TaskActions.deleteTask());
+  };
+
+  const closeModal = () => {
+    setModalAction(ModalAction.NONE);
+  };
+
+  const selectItem = (item: ITaskItem) => {
+    dispatch(TaskActions.setSelectedTask(item));
+    setShowMenu(true);
+  };
 
   const renderItem = ({item, index}: {item: ITaskItem; index: number}) => {
-    return <TaskItem task={item} key={index} />;
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          selectItem(item);
+        }}>
+        <TaskItem task={item} key={index} />
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -43,16 +79,45 @@ const Home = (): JSX.Element => {
         data={listTask}
         renderItem={renderItem}
         style={styles.tasksWrapper}
+        keyExtractor={(item, index) => `${index}_${item.id}`}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.writeTaskWrapper}>
-        <TouchableOpacity onPress={createNewTask}>
+      <View style={styles.writeTaskWrapper}>
+        <TouchableOpacity
+          onPress={() => {
+            setModalAction(ModalAction.ADD);
+          }}>
           <View style={styles.addWrapper}>
             <Text style={styles.addText}>+</Text>
           </View>
         </TouchableOpacity>
-      </KeyboardAvoidingView>
+      </View>
+      <TaskModal
+        modalAction={modalAction}
+        onClose={closeModal}
+        onSave={values => {
+          if (modalAction === ModalAction.ADD) {
+            createNewTask(values);
+          } else {
+            editTask(values);
+          }
+        }}
+      />
+      <ActionsMenu
+        visible={showMenu}
+        onClose={() => {
+          setShowMenu(false);
+        }}
+        onSelectAction={(action: ModalAction) => {
+          setShowMenu(false);
+          if (action === ModalAction.DELETE) {
+            deleteTask();
+          } else {
+            setTimeout(() => {
+              setModalAction(action);
+            }, 300);
+          }
+        }}
+      />
     </View>
   );
 };
@@ -88,4 +153,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   addText: {},
+  modalContainer: {
+    minHeight: 60,
+    paddingHorizontal: 20,
+  },
 });
