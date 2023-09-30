@@ -5,10 +5,11 @@ export enum IStatus {
 }
 
 export interface ITaskItem {
-  id?: string | number;
+  id?: string;
+  eventId?: string;
   title: string;
   description?: string;
   status: IStatus;
-  startTime?: Date;
-  endTime?: Date;
+  startTime: Date;
+  endTime: Date;
 }

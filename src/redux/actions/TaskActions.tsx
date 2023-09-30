@@ -2,6 +2,12 @@ import {ITaskItem} from '../../types/common';
 import TaskConstant from '../constants/TaskConstant';
 
 export default {
+  setList: (list: ITaskItem[]): {type: string; list: ITaskItem[]} => {
+    return {
+      type: TaskConstant.SET_LIST,
+      list,
+    };
+  },
   createNewTask: (task: ITaskItem): {type: string; task: ITaskItem} => {
     return {
       type: TaskConstant.CREATE_NEW_TASK,

@@ -12,12 +12,17 @@ const initialState: ITaskStore = {
 };
 const TaskReducer = (
   state = initialState,
-  action: {type: string; task: ITaskItem},
+  action: {type: string; task: ITaskItem; list: ITaskItem[]},
 ): ITaskStore => {
   const currentIndex = state.listTask.findIndex(
     item => item?.id === state.selectedTask?.id,
   );
   switch (action.type) {
+    case TaskConstant.SET_LIST:
+      return {
+        ...state,
+        listTask: action.list,
+      };
     case TaskConstant.CREATE_NEW_TASK:
       return {
         ...state,

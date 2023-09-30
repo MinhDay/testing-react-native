@@ -15,6 +15,10 @@ import store, {persistor} from './src/redux/store';
 import Home from './src/screens/Home';
 
 import notifee from '@notifee/react-native';
+import {NavigationContainer} from '@react-navigation/native';
+import {createStackNavigator} from '@react-navigation/stack';
+
+const StackNavigator = createStackNavigator();
 
 function LoadingPersisGate() {
   return (
@@ -87,7 +91,14 @@ function App(): JSX.Element {
     <SafeAreaView style={backgroundStyle}>
       <Provider store={store}>
         <PersistGate loading={<LoadingPersisGate />} persistor={persistor}>
-          <Home />
+          <NavigationContainer>
+            <StackNavigator.Navigator
+              screenOptions={{
+                headerShown: false,
+              }}>
+              <StackNavigator.Screen name="taskList" component={Home} />
+            </StackNavigator.Navigator>
+          </NavigationContainer>
         </PersistGate>
       </Provider>
     </SafeAreaView>

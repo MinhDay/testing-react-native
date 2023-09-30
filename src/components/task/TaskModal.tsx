@@ -17,6 +17,8 @@ import SelectDropdown from 'react-native-select-dropdown';
 import {FormikProps} from 'formik/dist/types';
 import {useSelector} from 'react-redux';
 import {IRootState} from '../../redux/reducers/RootReducer';
+import DatePicker from 'react-native-date-picker';
+import dayjs from 'dayjs';
 
 interface TaskModalProps {
   modalAction: ModalAction;
@@ -24,10 +26,12 @@ interface TaskModalProps {
   onSave: (value: ITaskItem) => void;
 }
 
-const defaultValue = {
+const defaultValue: ITaskItem = {
   title: '',
   description: '',
   status: IStatus.TODO,
+  startTime: new Date(),
+  endTime: new Date(),
 };
 
 const TaskModal = ({
@@ -39,12 +43,19 @@ const TaskModal = ({
 
   const formRef = useRef<FormikProps<ITaskItem>>(null);
   const [initialValues, setInitialValues] = useState<ITaskItem>(defaultValue);
+  const [datePickerVisible, setDatePickerVisible] = useState<
+    'start' | 'end' | undefined
+  >(undefined);
 
   useEffect(() => {
     if (modalAction === ModalAction.NONE) {
       setInitialValues(defaultValue);
     } else if (modalAction === ModalAction.EDIT) {
-      setInitialValues(selectedTask || defaultValue);
+      setInitialValues({
+        ...selectedTask,
+        startTime: dayjs.unix(selectedTask?.startTime.seconds).toDate(),
+        endTime: dayjs.unix(selectedTask?.endTime.seconds).toDate(),
+      } as ITaskItem);
     }
   }, [modalAction, selectedTask]);
 
@@ -118,9 +129,71 @@ const TaskModal = ({
                       defaultValue={values?.status}
                     />
                   </View>
+                  <View style={styles.formItems}>
+                    <Text style={styles.label}>Start time:</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setDatePickerVisible('start');
+                      }}>
+                      <TextInput
+                        style={styles.inputContainer}
+                        editable={false}
+                        value={dayjs(values.startTime).format(
+                          'ddd DD/MM HH:mm',
+                        )}
+                      />
+                    </TouchableOpacity>
+                    <DatePicker
+                      modal
+                      title="Select start time"
+                      androidVariant="iosClone"
+                      open={datePickerVisible === 'start'}
+                      date={values.startTime}
+                      onConfirm={date => {
+                        setFieldValue('startTime', date);
+                        setFieldValue(
+                          'endTime',
+                          dayjs(date).add(1, 'day').toDate(),
+                        );
+                        setDatePickerVisible(undefined);
+                      }}
+                      onCancel={() => {
+                        setDatePickerVisible(undefined);
+                      }}
+                    />
+                  </View>
+                  <View style={styles.formItems}>
+                    <Text style={styles.label}>End time:</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setDatePickerVisible('end');
+                      }}>
+                      <TextInput
+                        style={styles.inputContainer}
+                        editable={false}
+                        value={dayjs(values.endTime).format('ddd DD/MM HH:mm')}
+                      />
+                    </TouchableOpacity>
+                    <DatePicker
+                      modal
+                      title="Select end time"
+                      androidVariant="iosClone"
+                      open={datePickerVisible === 'end'}
+                      date={values.endTime}
+                      onConfirm={date => {
+                        setFieldValue('endTime', date);
+                        setDatePickerVisible(undefined);
+                      }}
+                      minimumDate={values.startTime}
+                      onCancel={() => {
+                        setDatePickerVisible(undefined);
+                      }}
+                    />
+                  </View>
                   <TouchableOpacity
                     style={styles.btnSubmit}
-                    onPress={() => handleSubmit()}>
+                    onPress={() => handleSubmit()}
+                    disabled={!values.title}>
                     <Text
                       style={{fontWeight: '700', color: 'white', fontSize: 18}}>
                       Submit
@@ -168,7 +241,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     height: 50,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,112,255,0.9)',
+    backgroundColor: '#436aee',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
