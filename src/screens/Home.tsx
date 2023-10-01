@@ -1,5 +1,6 @@
 import {
   Alert,
+  BackHandler,
   FlatList,
   StyleSheet,
   Text,
@@ -39,14 +40,28 @@ const Home = (): JSX.Element => {
 
   useEffect(() => {
     RNCalendarEvents.checkPermissions(false)
-      .then(() => {
-        RNCalendarEvents.requestPermissions(false)
-          .then(perRes => {
-            console.log('get per res', perRes);
-          })
-          .catch(perErr => {
-            console.log('get per err', perErr);
-          });
+      .then(permission => {
+        if (permission !== 'authorized') {
+          RNCalendarEvents.requestPermissions(false)
+            .then(perRes => {
+              console.log('get per res', perRes);
+              Alert.alert(
+                "You should grant access to your calendar to fully utilize the app's features",
+                '',
+                [
+                  {
+                    text: 'Ok',
+                    onPress: () => {
+                      BackHandler.exitApp();
+                    },
+                  },
+                ],
+              );
+            })
+            .catch(perErr => {
+              console.log('get per err', perErr);
+            });
+        }
       })
       .catch(err => {
         console.log('check per err', err);
@@ -65,19 +80,11 @@ const Home = (): JSX.Element => {
           accessLevel: '1',
           type: 'com.google',
           // personal email
-          source: {name: 'phamngocminh0306@gmail.com', isLocalAccount: true},
-          ownerAccount: 'phamngocminh0306@gmail.com',
+          source: {name: 'todo_list', isLocalAccount: true},
+          ownerAccount: 'todo_list',
         });
       } else {
         setCalendarId(todoCalendar.id);
-
-        RNCalendarEvents.fetchAllEvents(
-          '2023-01-01T19:26:00.000Z',
-          '2023-12-30T19:26:00.000Z',
-          [todoCalendar.id],
-        ).then(list => {
-          console.log(list);
-        });
       }
     });
     todoRef.orderBy('startTime', 'desc').onSnapshot(querystring => {
