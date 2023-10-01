@@ -18,6 +18,47 @@ import notifee from '@notifee/react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import BackgroundFetch from 'react-native-background-fetch';
+import {ITaskItem} from './src/types/common';
+
+interface ISendNotification {
+  fcmToken?: string | null;
+  title: string;
+  body: string;
+}
+
+export const sendNotification = async ({
+  fcmToken,
+  title,
+  body,
+}: ISendNotification) => {
+  let sendingTo = fcmToken;
+  if (!sendingTo) {
+    sendingTo = await AsyncStorage.getItem('fcmToken');
+    if (!sendingTo) {
+      throw Error('need to have fcm token');
+    }
+  }
+  axios.post(
+    'https://fcm.googleapis.com/fcm/send',
+    {
+      to: sendingTo,
+      notification: {
+        title: title,
+        body: body,
+      },
+    },
+    {
+      headers: {
+        Authorization:
+          'key=AAAAPnO6zJc:APA91bFjFl49jZgH2usYOIwxE9a9cehQz23xIGAe30HBZ9RyP0wx1cKWVzOMxYjcUbGhTcdvn8_2Kywcd1sBm1sOTC97-aXH5WCXKB6PenRP48YfQEN1rOkKkn43HlG-53M8LGSaSQAT',
+      },
+    },
+  );
+};
+
 const StackNavigator = createStackNavigator();
 
 function LoadingPersisGate() {
@@ -35,25 +76,61 @@ function App(): JSX.Element {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
     flex: 1,
   };
-
   useEffect(() => {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      onMessageReceived(remoteMessage);
-    });
+    const initBackgroundFetch = async () => {
+      const removePrefix = (taskId: string) => {
+        const parts = taskId.split(':');
+        if (parts.length > 1) {
+          const result = parts.slice(1).join(':');
+          return result.trim();
+        }
+        return null;
+      };
 
-    return unsubscribe;
+      // BackgroundFetch event handler.
+      const onEvent = async taskId => {
+        console.log('[BackgroundFetch] task: ', taskId);
+        // Do your background work...
+        if (taskId.includes('add-or-edit-task:')) {
+          const jsonValue = removePrefix(taskId);
+          if (!jsonValue) {
+            return;
+          }
+          const body = JSON.parse(jsonValue) as ITaskItem;
+          console.log({body});
+          sendNotification({
+            body: body?.description ?? 'todo is up',
+            title: body?.title ?? 'todo title',
+          });
+        }
+        // IMPORTANT:  You must signal to the OS that your task is complete.
+        BackgroundFetch.finish(taskId);
+      };
+
+      const onTimeout = async taskId => {
+        console.warn('[BackgroundFetch] TIMEOUT task: ', taskId);
+        BackgroundFetch.finish(taskId);
+      };
+
+      // Initialize BackgroundFetch only once when component mounts.
+      let status = await BackgroundFetch.configure(
+        {minimumFetchInterval: 15},
+        onEvent,
+        onTimeout,
+      );
+
+      console.log('[BackgroundFetch] configure status: ', status);
+    };
+    initBackgroundFetch();
   }, []);
-
   useEffect(() => {
     const start = async () => {
       try {
         const token = await messaging().getToken();
-        console.log('token', token);
+        console.log('fcm token: ', token);
+        AsyncStorage.setItem('fcmToken', token);
         // Request permission to show notification for firebase
         messaging().requestPermission();
-        messaging().onMessage(async remoteMessage => {
-          onMessageReceived(remoteMessage);
-        });
         messaging().setBackgroundMessageHandler(onMessageReceived);
         messaging().subscribeToTopic('NOTI_USERS').then(onMessageReceived);
       } catch (e) {
@@ -61,8 +138,11 @@ function App(): JSX.Element {
       }
     };
     start();
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      onMessageReceived(remoteMessage);
+    });
 
-    return () => {};
+    return unsubscribe;
   }, []);
 
   async function onMessageReceived(message: any) {

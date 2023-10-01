@@ -18,6 +18,7 @@ import ActionsMenu from '../components/task/ActionsMenu';
 import {firebase, firebaseConfig} from '../../config';
 import dayjs from 'dayjs';
 import RNCalendarEvents from 'react-native-calendar-events';
+import BackgroundFetch from 'react-native-background-fetch';
 
 export enum ModalAction {
   ADD,
@@ -25,6 +26,8 @@ export enum ModalAction {
   DELETE,
   NONE,
 }
+
+firebase.initializeApp(firebaseConfig);
 
 const Home = (): JSX.Element => {
   const {listTask, selectedTask} = useSelector(
@@ -35,7 +38,6 @@ const Home = (): JSX.Element => {
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [calendarId, setCalendarId] = useState<string>();
 
-  firebase.initializeApp(firebaseConfig);
   const todoRef = firebase.firestore().collection('todos');
 
   useEffect(() => {
@@ -236,11 +238,31 @@ const Home = (): JSX.Element => {
         modalAction={modalAction}
         onClose={closeModal}
         onSave={values => {
+          const calculateMillisecondsFiveMinutesBefore = inputDate => {
+            const targetDate = dayjs(inputDate);
+
+            // Get the current date and time using dayjs
+            const currentDate = dayjs();
+
+            // Calculate the difference in milliseconds
+            const millisecondsDifference = targetDate.diff(currentDate);
+
+            return millisecondsDifference > 300000
+              ? millisecondsDifference
+              : 5000;
+          };
           if (modalAction === ModalAction.ADD) {
             createNewTask(values);
           } else {
             editTask(values);
           }
+          BackgroundFetch.scheduleTask({
+            taskId: 'add-or-edit-task:' + JSON.stringify(values),
+            forceAlarmManager: true,
+            delay: calculateMillisecondsFiveMinutesBefore(values.endTime), // <-- milliseconds
+            enableHeadless: true,
+            stopOnTerminate: false,
+          }).then(r => console.log('schedule task result: ', r));
         }}
       />
       <ActionsMenu
